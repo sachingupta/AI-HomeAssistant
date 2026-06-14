@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     google_client_id: str
     google_client_secret: str
+    google_redirect_uri: str = "http://localhost:8080/oauth/callback"
     google_refresh_token: str = ""
     drive_folder_id: str = ""
     google_sheet_id: str = ""          # Used when DATA_STORE=sheets

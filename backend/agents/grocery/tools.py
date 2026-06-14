@@ -57,7 +57,7 @@ def _load_list() -> GroceryList:
 
 def _save_list(grocery_list: GroceryList) -> None:
     grocery_list.updated_at = datetime.now(timezone.utc).isoformat()
-    drive_write_json(_FOLDER, _FILE, grocery_list.model_dump())
+    drive_write_json(_FOLDER, _FILE, grocery_list.model_dump(mode="json"))
 
 
 def check_duplicate(item: str) -> dict:
