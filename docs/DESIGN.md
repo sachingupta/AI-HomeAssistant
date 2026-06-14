@@ -633,13 +633,56 @@ FAMILY_NAME=The Smiths
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Python project structure (`backend/`, `android/`) | `[ ]` | |
-| Install deps: `anthropic`, `fastapi`, `pydantic`, `google-auth` | `[ ]` | |
-| Google Drive direct read/write (`drive_client.py`) | `[ ]` | Used only in Phase 1 before MCP |
-| Grocery Agent ReAct loop | `[ ]` | `backend/agents/grocery/agent.py` |
-| Grocery tools: `add_grocery_items`, `get_grocery_list`, `mark_purchased`, `remove_items`, `check_duplicate` | `[ ]` | |
-| FastAPI `/chat` endpoint | `[ ]` | `backend/main.py` |
-| CLI smoke test: `python -m backend.agents.grocery.agent` | `[ ]` | |
+| Python project structure (`backend/`, `android/`) | `[x]` | |
+| Install deps: `anthropic`, `fastapi`, `pydantic`, `google-auth`, `gspread` | `[x]` | `backend/requirements.txt` |
+| Google Drive client (`drive_client.py`) + Sheets client (`sheets_client.py`) | `[x]` | Switchable via `DATA_STORE=sheets\|drive` |
+| Configurable data facade (`data_client.py`) | `[x]` | All agents import from here |
+| Grocery Agent schemas (`schemas.py`) | `[x]` | Pydantic models for items, history |
+| Grocery tools: all 6 tools + `TOOL_REGISTRY` | `[x]` | `backend/agents/grocery/tools.py` |
+| Grocery Agent ReAct loop (`agent.py`) | `[x]` | `backend/agents/grocery/agent.py` |
+| FastAPI `/chat` + `/ws/{user_id}` + `/health` | `[x]` | `backend/main.py` |
+| Google OAuth helper script | `[x]` | `backend/auth/google_auth.py` |
+| Unit tests for all grocery tools | `[x]` | `backend/tests/test_grocery_agent.py` |
+
+**How to test after Day 1–2:**
+
+```bash
+# 1. Install dependencies
+cd AI-HomeAssistant/backend
+pip install -r requirements.txt
+
+# 2. Copy and fill in your credentials
+cp ../.env.example ../.env
+# Edit .env: add ANTHROPIC_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# GOOGLE_SHEET_ID is already set to the test sheet
+
+# 3. Get a Google refresh token (opens browser once)
+cd ..
+python -m backend.auth.google_auth
+
+# 4. Test the Grocery Agent via CLI (no server needed)
+python -m backend.agents.grocery.agent
+# Try: "Add milk, eggs, and sourdough bread"
+# Try: "What's on my list?"
+# Try: "I bought eggs"
+# Then open the Google Sheet to see rows appear live
+
+# 5. Run unit tests (no Google credentials needed — Drive is mocked)
+pytest backend/tests/test_grocery_agent.py -v
+
+# 6. Start the FastAPI server
+python -m backend.main
+# Then: curl -X POST http://localhost:8000/chat \
+#   -H "Content-Type: application/json" \
+#   -d '{"user": "mom", "message": "Add bananas"}'
+```
+
+**What to verify:**
+- [ ] CLI agent responds to natural language grocery requests
+- [ ] Items appear as rows in the Google Sheet after being added
+- [ ] Duplicate detection works (try adding "milk" twice)
+- [ ] All 17 unit tests pass
+- [ ] `/health` endpoint returns `{"status": "ok"}`
 
 ### Day 3–4: Events + Todos + MCP Server
 
