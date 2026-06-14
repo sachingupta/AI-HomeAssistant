@@ -629,7 +629,11 @@ FAMILY_NAME=The Smiths
 > **Accelerated timeline:** AI coding assistants handle implementation. All phases compressed to 1 week.
 > Update the status column as work progresses. This section is the execution source of truth.
 
-### Day 1–2: Foundation + Grocery Agent
+---
+
+### Day 1–2: Foundation + Grocery Agent ✅
+
+**Features unlocked:** Family can add grocery items by chatting naturally ("add oat milk and eggs"), see the current shopping list, mark items as purchased, and avoid duplicates automatically. Data visible live in Google Sheet.
 
 | Task | Status | Notes |
 |------|--------|-------|
@@ -642,86 +646,137 @@ FAMILY_NAME=The Smiths
 | Grocery Agent ReAct loop (`agent.py`) | `[x]` | `backend/agents/grocery/agent.py` |
 | FastAPI `/chat` + `/ws/{user_id}` + `/health` | `[x]` | `backend/main.py` |
 | Google OAuth helper script | `[x]` | `backend/auth/google_auth.py` |
-| Unit tests for all grocery tools | `[x]` | `backend/tests/test_grocery_agent.py` |
+| `pytest.ini` + `conftest.py` for test env setup | `[x]` | Tests run without real credentials |
+| Unit tests for all grocery tools (17 tests) | `[x]` | `backend/tests/test_grocery_agent.py` |
+| `.gitignore` committed | `[x]` | Protects `.env` and credentials |
 
-**How to test after Day 1–2:**
+**How to test:**
 
 ```bash
 # 1. Install dependencies
-cd AI-HomeAssistant/backend
-pip install -r requirements.txt
+cd AI-HomeAssistant
+pip install -r backend/requirements.txt
 
-# 2. Copy and fill in your credentials
-cp ../.env.example ../.env
-# Edit .env: add ANTHROPIC_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
-# GOOGLE_SHEET_ID is already set to the test sheet
+# 2. Set up credentials
+cp .env.example .env
+# Edit .env: fill in ANTHROPIC_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# GOOGLE_SHEET_ID is pre-filled with the test sheet
 
 # 3. Get a Google refresh token (opens browser once)
-cd ..
 python -m backend.auth.google_auth
 
-# 4. Test the Grocery Agent via CLI (no server needed)
+# 4. Chat with the Grocery Agent via CLI
 python -m backend.agents.grocery.agent
 # Try: "Add milk, eggs, and sourdough bread"
 # Try: "What's on my list?"
 # Try: "I bought eggs"
-# Then open the Google Sheet to see rows appear live
+# Open the Google Sheet — rows appear live as you chat
 
-# 5. Run unit tests (no Google credentials needed — Drive is mocked)
-pytest backend/tests/test_grocery_agent.py -v
+# 5. Run unit tests (no Google credentials needed)
+pytest -v
 
-# 6. Start the FastAPI server
+# 6. Start the FastAPI server and call it
 python -m backend.main
-# Then: curl -X POST http://localhost:8000/chat \
-#   -H "Content-Type: application/json" \
-#   -d '{"user": "mom", "message": "Add bananas"}'
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"user": "mom", "message": "Add bananas"}'
 ```
 
-**What to verify:**
+**Verify before moving on:**
 - [ ] CLI agent responds to natural language grocery requests
 - [ ] Items appear as rows in the Google Sheet after being added
-- [ ] Duplicate detection works (try adding "milk" twice)
-- [ ] All 17 unit tests pass
-- [ ] `/health` endpoint returns `{"status": "ok"}`
+- [ ] Duplicate detection works (try adding "milk" twice — second should be skipped)
+- [ ] `pytest -v` → all 17 tests pass
+- [ ] `GET /health` → `{"status": "ok"}`
+- [ ] `POST /chat` → returns agent response JSON
+
+---
 
 ### Day 3–4: Events + Todos + MCP Server
 
+**Features unlocked:** Family can add/view/update calendar events with conflict detection ("Soccer practice Saturday 10am"), manage household to-dos with assignments ("Remind dad to mow the lawn"), get a weekly family schedule digest. All data goes through a proper MCP server (the main learning milestone).
+
 | Task | Status | Notes |
 |------|--------|-------|
-| Events Agent + tools (6 tools) | `[ ]` | Use `dateparser` for NL date parsing |
+| Events Agent schemas + tools (6 tools) | `[ ]` | Use `dateparser` for NL date parsing |
 | Conflict detection logic | `[ ]` | `check_conflicts` tool |
-| Todos Agent + tools (5 tools) | `[ ]` | |
-| Google Drive MCP server (`backend/mcp_server/server.py`) | `[ ]` | 6 `drive_*` tools |
-| OAuth flow for MCP server (`google_auth.py`) | `[ ]` | |
-| Refactor agents: replace direct Drive calls with MCP | `[ ]` | |
+| Events Agent ReAct loop | `[ ]` | `backend/agents/events/agent.py` |
+| Todos Agent schemas + tools (5 tools) | `[ ]` | |
+| Todos Agent ReAct loop | `[ ]` | `backend/agents/todos/agent.py` |
+| Google Drive MCP server | `[ ]` | `backend/mcp_server/server.py` — 6 `drive_*` tools |
+| Refactor agents: replace `data_client` calls with MCP subprocess | `[ ]` | |
 | Test MCP server with Claude Desktop inspector | `[ ]` | |
+| Unit tests: events agent | `[ ]` | `backend/tests/test_events_agent.py` |
+| Unit tests: todos agent | `[ ]` | `backend/tests/test_todos_agent.py` |
+| Unit tests: MCP server tools | `[ ]` | `backend/tests/test_mcp_server.py` |
+
+**How to test:**
+```bash
+# Chat with Events Agent
+python -m backend.agents.events.agent
+# Try: "Add Emma's soccer practice Saturday at 10am Eastside Park"
+# Try: "What events do we have this week?"
+# Try: "Add piano recital Sunday 2pm" → should warn about conflicts
+
+# Chat with Todos Agent
+python -m backend.agents.todos.agent
+# Try: "Remind dad to mow the lawn by Saturday"
+# Try: "What tasks are pending?"
+
+# Test MCP server in Claude Desktop
+# Add to Claude Desktop config: { "command": "python -m backend.mcp_server.server" }
+```
+
+---
 
 ### Day 5: Orchestrator + Android MVP + Code Assistant
+
+**Features unlocked:** Single chat interface routes automatically to the right agent ("Add bananas" → Grocery, "Soccer Saturday" → Events). Family members can use the Android app to chat. Weekly digest pulls from all agents at once ("What's going on this week?"). Code Assistant helps the developer extend the project.
 
 | Task | Status | Notes |
 |------|--------|-------|
 | Orchestrator Agent with intent routing | `[ ]` | `backend/orchestrator/agent.py` |
-| Router: keyword + intent classification | `[ ]` | `backend/orchestrator/router.py` |
+| Intent router (keyword + Claude classification) | `[ ]` | `backend/orchestrator/router.py` |
 | Fan-Out/Fan-In weekly digest | `[ ]` | Parallel calls to events + todos agents |
-| Agent memory: session buffer + Drive persistence | `[ ]` | `backend/orchestrator/memory.py` |
+| Session memory: buffer + Drive persistence | `[ ]` | `backend/orchestrator/memory.py` |
+| Wire Orchestrator into FastAPI `/chat` + `/ws` | `[ ]` | Replace direct `GroceryAgent` call in `main.py` |
 | Android project scaffold (Jetpack Compose) | `[ ]` | `android/` |
-| Android chat UI (message thread) | `[ ]` | |
-| Android → FastAPI HTTP/WebSocket connection | `[ ]` | |
+| Android chat UI (WhatsApp-style message thread) | `[ ]` | |
+| Android → FastAPI HTTP + WebSocket client | `[ ]` | |
 | Google Sign-In in Android app | `[ ]` | Token → Android Keystore |
 | Code Assistant Agent | `[ ]` | `backend/agents/code_assistant/` |
 
-### Day 6–7: Tests + Polish + Push Notifications
+**How to test:**
+```bash
+# Test Orchestrator routes correctly
+python -m backend.orchestrator.agent
+# Try: "Add bananas"          → should route to grocery_agent
+# Try: "Soccer Saturday 10am" → should route to events_agent
+# Try: "What's our week?"     → should call events + todos agents in parallel
+
+# Android: build and run in Android Studio
+# Point to http://<your-local-ip>:8000
+```
+
+---
+
+### Day 6–7: Tests + Polish + Proactive Alerts
+
+**Features unlocked:** Fully tested system. Android app caches data for offline reading. Backend pushes proactive alerts via WebSocket ("Emma's soccer practice is in 30 minutes"). System is ready for daily family use.
 
 | Task | Status | Notes |
 |------|--------|-------|
-| pytest: grocery agent | `[ ]` | `backend/tests/test_grocery_agent.py` |
-| pytest: events agent | `[ ]` | |
-| pytest: todos agent | `[ ]` | |
-| pytest: MCP server | `[ ]` | |
 | Android Room DB for offline caching | `[ ]` | Cache grocery list, todos, upcoming events |
-| Push notifications (FCM) for proactive alerts | `[ ]` | Event reminders, low grocery items |
-| End-to-end test on Android device | `[ ]` | Full flow: chat → agent → Drive → response |
+| Proactive alert scheduler (background task in FastAPI) | `[ ]` | Checks upcoming events every 15 min via WebSocket |
+| End-to-end test on Android device | `[ ]` | Full flow: chat → agent → Sheet → response |
+| Integration test: full conversation flow | `[ ]` | `backend/tests/test_integration.py` |
 | Update DESIGN.md with any implementation deviations | `[ ]` | |
+
+**How to test:**
+```bash
+# Full end-to-end: chat on Android → see rows appear in Google Sheet
+# Trigger proactive alert: add an event 30 min from now → watch Android receive push
+```
 
 ---
 

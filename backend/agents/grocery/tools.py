@@ -9,12 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 from rapidfuzz import fuzz
 
-from backend.data_client import (
-    drive_append_record,
-    drive_read_json,
-    drive_update_record,
-    drive_write_json,
-)
+from backend.data_client import drive_read_json, drive_write_json
 from backend.agents.grocery.schemas import GroceryItem, GroceryList, ItemStatus, PurchaseRecord
 
 _FOLDER = "groceries"

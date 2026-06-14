@@ -33,8 +33,6 @@ def patch_drive(reset_store):
     with (
         patch("backend.agents.grocery.tools.drive_read_json", side_effect=_mock_read),
         patch("backend.agents.grocery.tools.drive_write_json", side_effect=_mock_write),
-        patch("backend.agents.grocery.tools.drive_append_record"),
-        patch("backend.agents.grocery.tools.drive_update_record"),
     ):
         yield
 
