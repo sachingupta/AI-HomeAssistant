@@ -231,8 +231,8 @@ You have deep knowledge of this codebase, its design docs, and conventions.
 Project conventions:
 - All tools defined as Python functions with type hints and docstrings
 - Pydantic models for all data schemas (see agents/*/schemas.py)
-- MCP tools follow the drive_* naming prefix
-- All Drive access goes through MCP — never direct API calls from agents
+- MCP tools follow the store_* naming prefix (backend-agnostic; not tied to Drive)
+- All storage access goes through MCP — never direct API calls from agents
 - Tests live in tests/ and must be runnable with: pytest
 
 Design source of truth: docs/PRD.md and docs/DESIGN.md
@@ -324,19 +324,19 @@ async def main():
 
 | Tool Name | Parameters | Description |
 |-----------|------------|-------------|
-| drive_read_json | folder: str, filename: str | Read and parse a JSON file from Drive folder |
-| drive_write_json | folder: str, filename: str, data: dict | Write JSON to Drive, create if not exists |
-| drive_list_files | folder: str | List all files in a AI Home Assistant subfolder |
-| drive_append_record | folder: str, filename: str, record: dict | Append a record to a JSON array file |
-| drive_update_record | folder: str, filename: str, id: str, updates: dict | Find record by ID and patch fields |
-| drive_delete_record | folder: str, filename: str, id: str | Remove a record from a JSON array |
+| store_read_json | folder: str, filename: str | Read and parse a JSON file from the data store |
+| store_write_json | folder: str, filename: str, data: dict | Write JSON to store, create if not exists |
+| store_list_files | folder: str | List all files in an AI Home Assistant subfolder |
+| store_append_record | folder: str, filename: str, record: dict | Append a record to a JSON array file |
+| store_update_record | folder: str, filename: str, id: str, updates: dict | Find record by ID and patch fields |
+| store_delete_record | folder: str, filename: str, id: str | Remove a record from a JSON array |
 
 ### 3.4 Tool Schema Example
 
 ```python
 READ_JSON_TOOL = Tool(
-    name="drive_read_json",
-    description="Read a JSON file from the AI Home Assistant Google Drive folder.",
+    name="store_read_json",
+    description="Read a JSON file from the AI Home Assistant data store.",
     inputSchema={
         "type": "object",
         "properties": {
@@ -647,7 +647,7 @@ FAMILY_NAME=The Smiths
 | FastAPI `/chat` + `/ws/{user_id}` + `/health` | `[x]` | `backend/main.py` |
 | Google OAuth helper script | `[x]` | `backend/auth/google_auth.py` |
 | `pytest.ini` + `conftest.py` for test env setup | `[x]` | Tests run without real credentials |
-| Unit tests for all grocery tools (17 tests) | `[x]` | `backend/tests/test_grocery_agent.py` |
+| Unit tests for all grocery tools (19 tests) | `[x]` | `backend/tests/test_grocery_agent.py` |
 | `.gitignore` committed | `[x]` | Protects `.env` and credentials |
 
 **How to test:**
@@ -692,39 +692,66 @@ curl -X POST http://localhost:8000/chat \
 
 ---
 
-### Day 3–4: Events + Todos + MCP Server
+### Day 3–4: MCP Server ✅ + Events Agent + Todos Agent
 
-**Features unlocked:** Family can add/view/update calendar events with conflict detection ("Soccer practice Saturday 10am"), manage household to-dos with assignments ("Remind dad to mow the lawn"), get a weekly family schedule digest. All data goes through a proper MCP server (the main learning milestone).
+**Features unlocked (MCP Server — done):** All agents share a single MCP server exposing 6 `store_*` tools over JSON-RPC stdio. Backend-agnostic naming (`store_*`) means swapping Google Drive for a real DB requires zero agent code changes. 11 unit tests pass; total 30 tests across the project.
+
+**Features unlocked (Events + Todos — next):** Family can add/view/update calendar events with conflict detection, manage household to-dos with assignments, and get a weekly family schedule digest.
+
+#### Phase 2a — MCP Server ✅ (`feature/phase2-mcp-server`, PR #2)
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Events Agent schemas + tools (6 tools) | `[ ]` | Use `dateparser` for NL date parsing |
-| Conflict detection logic | `[ ]` | `check_conflicts` tool |
+| Raw JSON-RPC MCP server (no SDK — Python 3.9 compatible) | `[x]` | `backend/mcp_server/server.py` |
+| 6 `store_*` tools: read, write, append, update, delete, list | `[x]` | Backend-agnostic naming (not tied to Drive) |
+| `store_*` rename across all files + tests + docs | `[x]` | `drive_client`, `sheets_client`, `data_client`, agents, tests |
+| Unit tests: MCP server dispatch (11 tests) | `[x]` | `backend/tests/test_mcp_server.py` |
+
+**How to test MCP server:**
+```bash
+# Run MCP server interactively (JSON-RPC over stdin/stdout)
+source .venv/bin/activate
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | python -m backend.mcp_server.server
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | python -m backend.mcp_server.server
+
+# Add to Claude Desktop config to use via Claude UI:
+# { "command": "python -m backend.mcp_server.server", "cwd": "/path/to/AI-HomeAssistant" }
+```
+
+#### Phase 2b — Events Agent (`feature/phase2-events-agent`) — **NEXT**
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Events Agent schemas (`schemas.py`) | `[ ]` | Pydantic models for Event, RecurringRule |
+| Events tools: 6 tools + `TOOL_REGISTRY` | `[ ]` | add_event, get_events, get_weekly_digest, check_conflicts, update_event, delete_event |
+| NL date parsing with `dateparser` | `[ ]` | "Saturday 10am" → structured datetime |
+| Conflict detection logic | `[ ]` | `check_conflicts` tool — overlap detection |
 | Events Agent ReAct loop | `[ ]` | `backend/agents/events/agent.py` |
-| Todos Agent schemas + tools (5 tools) | `[ ]` | |
-| Todos Agent ReAct loop | `[ ]` | `backend/agents/todos/agent.py` |
-| Google Drive MCP server | `[ ]` | `backend/mcp_server/server.py` — 6 `drive_*` tools |
-| Refactor agents: replace `data_client` calls with MCP subprocess | `[ ]` | |
-| Test MCP server with Claude Desktop inspector | `[ ]` | |
 | Unit tests: events agent | `[ ]` | `backend/tests/test_events_agent.py` |
-| Unit tests: todos agent | `[ ]` | `backend/tests/test_todos_agent.py` |
-| Unit tests: MCP server tools | `[ ]` | `backend/tests/test_mcp_server.py` |
 
 **How to test:**
 ```bash
-# Chat with Events Agent
 python -m backend.agents.events.agent
 # Try: "Add Emma's soccer practice Saturday at 10am Eastside Park"
 # Try: "What events do we have this week?"
-# Try: "Add piano recital Sunday 2pm" → should warn about conflicts
+# Try: "Add piano recital Sunday 2pm" → should warn about conflicts with existing events
+```
 
-# Chat with Todos Agent
+#### Phase 2c — Todos Agent (`feature/phase2-todos-agent`)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Todos Agent schemas (`schemas.py`) | `[ ]` | Pydantic models for Todo, Priority, Status enums |
+| Todos tools: 5 tools + `TOOL_REGISTRY` | `[ ]` | add_todo, get_todos, complete_todo, assign_todo, get_weekly_summary |
+| Todos Agent ReAct loop | `[ ]` | `backend/agents/todos/agent.py` |
+| Unit tests: todos agent | `[ ]` | `backend/tests/test_todos_agent.py` |
+
+**How to test:**
+```bash
 python -m backend.agents.todos.agent
 # Try: "Remind dad to mow the lawn by Saturday"
-# Try: "What tasks are pending?"
-
-# Test MCP server in Claude Desktop
-# Add to Claude Desktop config: { "command": "python -m backend.mcp_server.server" }
+# Try: "What tasks are assigned to mom?"
+# Try: "Mark lawn mowing as done"
 ```
 
 ---

@@ -1,6 +1,6 @@
 """
 Unit tests for Grocery Agent tools.
-These tests mock the Drive client so no real Google credentials are needed.
+These tests mock the store client so no real Google credentials are needed.
 Run: pytest backend/tests/test_grocery_agent.py -v
 """
 
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Patch drive functions before importing tools
+# Patch store functions before importing tools
 _MOCK_STORE: dict = {}
 
 
@@ -31,8 +31,8 @@ def reset_store():
 @pytest.fixture(autouse=True)
 def patch_drive(reset_store):
     with (
-        patch("backend.agents.grocery.tools.drive_read_json", side_effect=_mock_read),
-        patch("backend.agents.grocery.tools.drive_write_json", side_effect=_mock_write),
+        patch("backend.agents.grocery.tools.store_read_json", side_effect=_mock_read),
+        patch("backend.agents.grocery.tools.store_write_json", side_effect=_mock_write),
     ):
         yield
 

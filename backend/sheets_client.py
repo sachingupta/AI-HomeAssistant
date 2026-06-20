@@ -130,7 +130,7 @@ def _records_to_rows(records: list[dict], headers: list[str]) -> list[list]:
     return rows
 
 
-def drive_read_json(folder: str, filename: str) -> dict:
+def store_read_json(folder: str, filename: str) -> dict:
     """Read all worksheet tabs for a logical file and return as a combined dict."""
     tab_map = _FILE_TAB_MAP.get((folder, filename), {})
     result: dict = {"version": "1.0", "updated_at": datetime.now(timezone.utc).isoformat()}
@@ -146,7 +146,7 @@ def drive_read_json(folder: str, filename: str) -> dict:
     return result
 
 
-def drive_write_json(folder: str, filename: str, data: dict) -> None:
+def store_write_json(folder: str, filename: str, data: dict) -> None:
     """Write all array keys in data to their respective worksheet tabs."""
     tab_map = _FILE_TAB_MAP.get((folder, filename), {})
 
@@ -167,7 +167,7 @@ def drive_write_json(folder: str, filename: str, data: dict) -> None:
             logger.error("Failed to write tab %s: %s", tab_name, exc)
 
 
-def drive_append_record(folder: str, filename: str, record: dict, array_key: str) -> None:
+def store_append_record(folder: str, filename: str, record: dict, array_key: str) -> None:
     """Append a single record to the appropriate worksheet tab."""
     tab_map = _FILE_TAB_MAP.get((folder, filename), {})
     tab_name = tab_map.get(array_key)
@@ -195,7 +195,7 @@ def drive_append_record(folder: str, filename: str, record: dict, array_key: str
         logger.error("Failed to append to tab %s: %s", tab_name, exc)
 
 
-def drive_update_record(
+def store_update_record(
     folder: str, filename: str, record_id: str, updates: dict, array_key: str
 ) -> bool:
     """Find a record by id and update its fields in the worksheet. Returns True if found."""
@@ -228,7 +228,7 @@ def drive_update_record(
     return False
 
 
-def drive_delete_record(
+def store_delete_record(
     folder: str, filename: str, record_id: str, array_key: str
 ) -> bool:
     """Remove a record row from the worksheet by id. Returns True if found."""

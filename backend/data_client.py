@@ -27,8 +27,8 @@ def _load_backend():
 
 _backend = _load_backend()
 
-drive_read_json = _backend.drive_read_json
-drive_write_json = _backend.drive_write_json
-drive_append_record = _backend.drive_append_record
-drive_update_record = _backend.drive_update_record
-drive_delete_record = _backend.drive_delete_record
+store_read_json = _backend.store_read_json
+store_write_json = _backend.store_write_json
+store_append_record = _backend.store_append_record
+store_update_record = _backend.store_update_record
+store_delete_record = _backend.store_delete_record
