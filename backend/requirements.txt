@@ -1,5 +1,6 @@
 # Core AI
 anthropic>=0.40.0
+# mcp>=1.0.0 requires Python 3.10+; MCP server uses raw JSON-RPC instead
 
 # Web framework
 fastapi>=0.115.0
