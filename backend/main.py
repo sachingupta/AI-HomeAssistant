@@ -19,6 +19,11 @@ from pydantic import BaseModel
 from backend.config import settings
 from backend.agents.grocery.agent import GroceryAgent
 
+# TODO (Phase 3): replace GroceryAgent with OrchestratorAgent so all messages
+# are routed to the right sub-agent automatically:
+#   from backend.orchestrator.agent import OrchestratorAgent
+# main.py itself won't change beyond that one import swap.
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -82,7 +87,7 @@ async def chat(request: ChatRequest):
         response_text = agent.chat(request.message)
         return ChatResponse(
             response=response_text,
-            agent_called="grocery_agent",
+            agent_called="grocery_agent",  # Phase 3: orchestrator will return the actual agent name
             session_id=request.session_id,
         )
     except Exception as exc:
@@ -133,7 +138,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                     await websocket.send_text(json.dumps({
                         "type": "response",
                         "message": response_text,
-                        "agent_called": "grocery_agent",
+                        "agent_called": "grocery_agent",  # Phase 3: orchestrator will return the actual agent name
                     }))
                 except Exception as exc:
                     logger.exception("Agent error for %s", user_id)
