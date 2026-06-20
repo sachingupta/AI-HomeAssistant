@@ -18,11 +18,11 @@ import logging
 import sys
 
 from backend.data_client import (
-    drive_append_record,
-    drive_delete_record,
-    drive_read_json,
-    drive_update_record,
-    drive_write_json,
+    store_append_record,
+    store_delete_record,
+    store_read_json,
+    store_update_record,
+    store_write_json,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,8 +31,8 @@ _FOLDERS = ["events", "groceries", "todos", "agent-memory"]
 
 _TOOLS = [
     {
-        "name": "drive_read_json",
-        "description": "Read and parse a JSON file from an AI Home Assistant Drive folder.",
+        "name": "store_read_json",
+        "description": "Read and parse a JSON file from an AI Home Assistant store folder.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -43,8 +43,8 @@ _TOOLS = [
         },
     },
     {
-        "name": "drive_write_json",
-        "description": "Write data as JSON to a Drive folder file (creates if missing).",
+        "name": "store_write_json",
+        "description": "Write data as JSON to a store folder file (creates if missing).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -56,8 +56,8 @@ _TOOLS = [
         },
     },
     {
-        "name": "drive_append_record",
-        "description": "Append a single record dict to a named JSON array inside a Drive file.",
+        "name": "store_append_record",
+        "description": "Append a single record dict to a named JSON array inside a store file.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -70,7 +70,7 @@ _TOOLS = [
         },
     },
     {
-        "name": "drive_update_record",
+        "name": "store_update_record",
         "description": "Find a record by its 'id' field and patch specified fields in place.",
         "inputSchema": {
             "type": "object",
@@ -85,7 +85,7 @@ _TOOLS = [
         },
     },
     {
-        "name": "drive_delete_record",
+        "name": "store_delete_record",
         "description": "Remove a record from a JSON array by its 'id' field.",
         "inputSchema": {
             "type": "object",
@@ -99,7 +99,7 @@ _TOOLS = [
         },
     },
     {
-        "name": "drive_list_files",
+        "name": "store_list_files",
         "description": "List all known JSON filenames in an AI Home Assistant subfolder.",
         "inputSchema": {
             "type": "object",
@@ -128,35 +128,35 @@ def _error(request_id, code: int, message: str) -> None:
 
 def _dispatch(name: str, args: dict) -> dict:
     """Execute an MCP tool and return the result dict."""
-    if name == "drive_read_json":
-        return drive_read_json(args["folder"], args["filename"])
+    if name == "store_read_json":
+        return store_read_json(args["folder"], args["filename"])
 
-    if name == "drive_write_json":
-        drive_write_json(args["folder"], args["filename"], args["data"])
+    if name == "store_write_json":
+        store_write_json(args["folder"], args["filename"], args["data"])
         return {"status": "ok"}
 
-    if name == "drive_append_record":
-        drive_append_record(
+    if name == "store_append_record":
+        store_append_record(
             args["folder"], args["filename"],
             args["record"], args["array_key"],
         )
         return {"status": "ok"}
 
-    if name == "drive_update_record":
-        updated = drive_update_record(
+    if name == "store_update_record":
+        updated = store_update_record(
             args["folder"], args["filename"],
             args["record_id"], args["updates"], args["array_key"],
         )
         return {"updated": updated}
 
-    if name == "drive_delete_record":
-        deleted = drive_delete_record(
+    if name == "store_delete_record":
+        deleted = store_delete_record(
             args["folder"], args["filename"],
             args["record_id"], args["array_key"],
         )
         return {"deleted": deleted}
 
-    if name == "drive_list_files":
+    if name == "store_list_files":
         from backend.sheets_client import _FILE_TAB_MAP
         files = [fn for (fld, fn) in _FILE_TAB_MAP if fld == args["folder"]]
         return {"folder": args["folder"], "files": files}
@@ -178,7 +178,7 @@ def _handle(request: dict) -> None:
         _respond(req_id, {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "ai-home-assistant-google-drive", "version": "1.0.0"},
+            "serverInfo": {"name": "ai-home-assistant-store", "version": "1.0.0"},
         })
 
     elif method == "tools/list":

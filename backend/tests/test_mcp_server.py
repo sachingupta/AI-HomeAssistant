@@ -51,11 +51,11 @@ def reset_store():
 @pytest.fixture(autouse=True)
 def patch_data_client(reset_store):
     with (
-        patch("backend.mcp_server.server.drive_read_json", side_effect=_mock_read),
-        patch("backend.mcp_server.server.drive_write_json", side_effect=_mock_write),
-        patch("backend.mcp_server.server.drive_append_record", side_effect=_mock_append),
-        patch("backend.mcp_server.server.drive_update_record", side_effect=_mock_update),
-        patch("backend.mcp_server.server.drive_delete_record", side_effect=_mock_delete),
+        patch("backend.mcp_server.server.store_read_json", side_effect=_mock_read),
+        patch("backend.mcp_server.server.store_write_json", side_effect=_mock_write),
+        patch("backend.mcp_server.server.store_append_record", side_effect=_mock_append),
+        patch("backend.mcp_server.server.store_update_record", side_effect=_mock_update),
+        patch("backend.mcp_server.server.store_delete_record", side_effect=_mock_delete),
     ):
         yield
 
@@ -63,34 +63,34 @@ def patch_data_client(reset_store):
 from backend.mcp_server.server import _dispatch
 
 
-class TestDriveReadJson:
+class TestStoreReadJson:
     def test_returns_empty_dict_when_missing(self):
-        result = _dispatch("drive_read_json", {"folder": "groceries", "filename": "grocery_list.json"})
+        result = _dispatch("store_read_json", {"folder": "groceries", "filename": "grocery_list.json"})
         assert result == {}
 
     def test_returns_stored_data(self):
         _MOCK_STORE["groceries/grocery_list.json"] = {"items": [{"name": "milk"}]}
-        result = _dispatch("drive_read_json", {"folder": "groceries", "filename": "grocery_list.json"})
+        result = _dispatch("store_read_json", {"folder": "groceries", "filename": "grocery_list.json"})
         assert result["items"][0]["name"] == "milk"
 
 
-class TestDriveWriteJson:
+class TestStoreWriteJson:
     def test_write_returns_ok(self):
-        result = _dispatch("drive_write_json", {
+        result = _dispatch("store_write_json", {
             "folder": "todos", "filename": "todos.json", "data": {"todos": []}
         })
         assert result == {"status": "ok"}
 
     def test_data_is_persisted(self):
-        _dispatch("drive_write_json", {
+        _dispatch("store_write_json", {
             "folder": "todos", "filename": "todos.json", "data": {"todos": [{"id": "1"}]}
         })
         assert _MOCK_STORE["todos/todos.json"]["todos"][0]["id"] == "1"
 
 
-class TestDriveAppendRecord:
+class TestStoreAppendRecord:
     def test_append_adds_record(self):
-        result = _dispatch("drive_append_record", {
+        result = _dispatch("store_append_record", {
             "folder": "events", "filename": "events.json",
             "record": {"id": "abc", "title": "Soccer"},
             "array_key": "events",
@@ -100,7 +100,7 @@ class TestDriveAppendRecord:
 
     def test_multiple_appends(self):
         for i in range(3):
-            _dispatch("drive_append_record", {
+            _dispatch("store_append_record", {
                 "folder": "events", "filename": "events.json",
                 "record": {"id": str(i), "title": f"Event {i}"},
                 "array_key": "events",
@@ -108,10 +108,10 @@ class TestDriveAppendRecord:
         assert len(_MOCK_STORE["events/events.json"]["events"]) == 3
 
 
-class TestDriveUpdateRecord:
+class TestStoreUpdateRecord:
     def test_update_existing_record(self):
         _MOCK_STORE["todos/todos.json"] = {"todos": [{"id": "t1", "status": "pending"}]}
-        result = _dispatch("drive_update_record", {
+        result = _dispatch("store_update_record", {
             "folder": "todos", "filename": "todos.json",
             "record_id": "t1", "updates": {"status": "done"}, "array_key": "todos",
         })
@@ -119,17 +119,17 @@ class TestDriveUpdateRecord:
         assert _MOCK_STORE["todos/todos.json"]["todos"][0]["status"] == "done"
 
     def test_update_nonexistent_record(self):
-        result = _dispatch("drive_update_record", {
+        result = _dispatch("store_update_record", {
             "folder": "todos", "filename": "todos.json",
             "record_id": "ghost", "updates": {"status": "done"}, "array_key": "todos",
         })
         assert result == {"updated": False}
 
 
-class TestDriveDeleteRecord:
+class TestStoreDeleteRecord:
     def test_delete_existing_record(self):
         _MOCK_STORE["todos/todos.json"] = {"todos": [{"id": "t1"}, {"id": "t2"}]}
-        result = _dispatch("drive_delete_record", {
+        result = _dispatch("store_delete_record", {
             "folder": "todos", "filename": "todos.json",
             "record_id": "t1", "array_key": "todos",
         })
@@ -137,7 +137,7 @@ class TestDriveDeleteRecord:
         assert len(_MOCK_STORE["todos/todos.json"]["todos"]) == 1
 
     def test_delete_nonexistent_record(self):
-        result = _dispatch("drive_delete_record", {
+        result = _dispatch("store_delete_record", {
             "folder": "todos", "filename": "todos.json",
             "record_id": "ghost", "array_key": "todos",
         })
@@ -147,4 +147,4 @@ class TestDriveDeleteRecord:
 class TestUnknownTool:
     def test_unknown_tool_raises(self):
         with pytest.raises(ValueError, match="Unknown tool"):
-            _dispatch("drive_explode", {})
+            _dispatch("store_explode", {})

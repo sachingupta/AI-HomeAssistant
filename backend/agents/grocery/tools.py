@@ -1,7 +1,7 @@
 """
 Grocery Agent tool implementations.
 Each function is also registered as a Claude tool in agent.py.
-All Drive access goes through drive_client (Phase 1) — will swap to MCP in Phase 3.
+All storage access goes through data_client — swap DATA_STORE env var to switch backends.
 """
 
 import json
@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 from rapidfuzz import fuzz
 
-from backend.data_client import drive_read_json, drive_write_json
+from backend.data_client import store_read_json, store_write_json
 from backend.agents.grocery.schemas import GroceryItem, GroceryList, ItemStatus, PurchaseRecord
 
 _FOLDER = "groceries"
@@ -49,7 +49,7 @@ def _infer_category(item_name: str) -> str:
 
 
 def _load_list() -> GroceryList:
-    data = drive_read_json(_FOLDER, _FILE)
+    data = store_read_json(_FOLDER, _FILE)
     if not data:
         return GroceryList()
     return GroceryList.model_validate(data)
@@ -57,7 +57,7 @@ def _load_list() -> GroceryList:
 
 def _save_list(grocery_list: GroceryList) -> None:
     grocery_list.updated_at = datetime.now(timezone.utc).isoformat()
-    drive_write_json(_FOLDER, _FILE, grocery_list.model_dump(mode="json"))
+    store_write_json(_FOLDER, _FILE, grocery_list.model_dump(mode="json"))
 
 
 def check_duplicate(item: str) -> dict:

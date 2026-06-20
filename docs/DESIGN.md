@@ -231,8 +231,8 @@ You have deep knowledge of this codebase, its design docs, and conventions.
 Project conventions:
 - All tools defined as Python functions with type hints and docstrings
 - Pydantic models for all data schemas (see agents/*/schemas.py)
-- MCP tools follow the drive_* naming prefix
-- All Drive access goes through MCP — never direct API calls from agents
+- MCP tools follow the store_* naming prefix (backend-agnostic; not tied to Drive)
+- All storage access goes through MCP — never direct API calls from agents
 - Tests live in tests/ and must be runnable with: pytest
 
 Design source of truth: docs/PRD.md and docs/DESIGN.md
@@ -324,19 +324,19 @@ async def main():
 
 | Tool Name | Parameters | Description |
 |-----------|------------|-------------|
-| drive_read_json | folder: str, filename: str | Read and parse a JSON file from Drive folder |
-| drive_write_json | folder: str, filename: str, data: dict | Write JSON to Drive, create if not exists |
-| drive_list_files | folder: str | List all files in a AI Home Assistant subfolder |
-| drive_append_record | folder: str, filename: str, record: dict | Append a record to a JSON array file |
-| drive_update_record | folder: str, filename: str, id: str, updates: dict | Find record by ID and patch fields |
-| drive_delete_record | folder: str, filename: str, id: str | Remove a record from a JSON array |
+| store_read_json | folder: str, filename: str | Read and parse a JSON file from the data store |
+| store_write_json | folder: str, filename: str, data: dict | Write JSON to store, create if not exists |
+| store_list_files | folder: str | List all files in an AI Home Assistant subfolder |
+| store_append_record | folder: str, filename: str, record: dict | Append a record to a JSON array file |
+| store_update_record | folder: str, filename: str, id: str, updates: dict | Find record by ID and patch fields |
+| store_delete_record | folder: str, filename: str, id: str | Remove a record from a JSON array |
 
 ### 3.4 Tool Schema Example
 
 ```python
 READ_JSON_TOOL = Tool(
-    name="drive_read_json",
-    description="Read a JSON file from the AI Home Assistant Google Drive folder.",
+    name="store_read_json",
+    description="Read a JSON file from the AI Home Assistant data store.",
     inputSchema={
         "type": "object",
         "properties": {

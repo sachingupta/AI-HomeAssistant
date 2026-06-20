@@ -63,8 +63,8 @@ ai-home-assistant/
 - **Pydantic v2** for all data models (see `agents/*/schemas.py`)
 - **Tool functions**: plain Python functions with docstrings; registered via Claude API `tools` param
 - **Agent loop**: `while True` ReAct loop — send to Claude, check for `tool_use` blocks, execute, repeat until `end_turn`
-- **MCP tools**: all named `drive_*` (e.g., `drive_read_json`, `drive_append_record`)
-- **No direct Drive API calls from agents** — always go through MCP server
+- **MCP tools**: all named `store_*` (e.g., `store_read_json`, `store_append_record`) — backend-agnostic prefix, not tied to Drive
+- **No direct storage API calls from agents** — always go through MCP server / data_client
 - **Tests**: pytest, `tests/test_<module>.py` naming; run with `pytest backend/tests/`
 
 ### Example tool function pattern

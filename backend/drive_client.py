@@ -72,7 +72,7 @@ def _get_file_id(folder_id: str, filename: str) -> str | None:
     return files[0]["id"] if files else None
 
 
-def drive_read_json(folder: str, filename: str) -> dict:
+def store_read_json(folder: str, filename: str) -> dict:
     """Read and parse a JSON file from a Drive subfolder."""
     service = _get_service()
     folder_id = _get_or_create_subfolder(folder)
@@ -91,7 +91,7 @@ def drive_read_json(folder: str, filename: str) -> dict:
     return json.loads(buffer.getvalue().decode("utf-8"))
 
 
-def drive_write_json(folder: str, filename: str, data: dict) -> None:
+def store_write_json(folder: str, filename: str, data: dict) -> None:
     """Write a dict as JSON to Drive, creating or updating the file."""
     service = _get_service()
     folder_id = _get_or_create_subfolder(folder)
@@ -107,44 +107,44 @@ def drive_write_json(folder: str, filename: str, data: dict) -> None:
         service.files().create(body=metadata, media_body=media, fields="id").execute()
 
 
-def drive_append_record(folder: str, filename: str, record: dict, array_key: str) -> None:
+def store_append_record(folder: str, filename: str, record: dict, array_key: str) -> None:
     """Append a record to a JSON array inside a file."""
-    data = drive_read_json(folder, filename)
+    data = store_read_json(folder, filename)
     if array_key not in data:
         data[array_key] = []
     data[array_key].append(record)
     from datetime import datetime, timezone
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    drive_write_json(folder, filename, data)
+    store_write_json(folder, filename, data)
 
 
-def drive_update_record(
+def store_update_record(
     folder: str, filename: str, record_id: str, updates: dict, array_key: str
 ) -> bool:
     """Find a record by id and patch its fields. Returns True if found."""
-    data = drive_read_json(folder, filename)
+    data = store_read_json(folder, filename)
     records = data.get(array_key, [])
     for i, record in enumerate(records):
         if record.get("id") == record_id:
             records[i] = {**record, **updates}
             from datetime import datetime, timezone
             data["updated_at"] = datetime.now(timezone.utc).isoformat()
-            drive_write_json(folder, filename, data)
+            store_write_json(folder, filename, data)
             return True
     return False
 
 
-def drive_delete_record(
+def store_delete_record(
     folder: str, filename: str, record_id: str, array_key: str
 ) -> bool:
     """Remove a record from a JSON array. Returns True if found and removed."""
-    data = drive_read_json(folder, filename)
+    data = store_read_json(folder, filename)
     records = data.get(array_key, [])
     original_len = len(records)
     data[array_key] = [r for r in records if r.get("id") != record_id]
     if len(data[array_key]) < original_len:
         from datetime import datetime, timezone
         data["updated_at"] = datetime.now(timezone.utc).isoformat()
-        drive_write_json(folder, filename, data)
+        store_write_json(folder, filename, data)
         return True
     return False
