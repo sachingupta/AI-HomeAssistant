@@ -515,7 +515,7 @@ All endpoints require a `Authorization: Bearer <google_id_token>` header. The Fa
 
 ## 6. Key Data Flows
 
-### 5.1 Adding a Grocery Item
+### 6.1 Adding a Grocery Item
 
 1. User: "Add oat milk and sourdough" → Chat Interface
 2. Chat Interface → Orchestrator Agent (with conversation history)
@@ -525,7 +525,7 @@ All endpoints require a `Authorization: Bearer <google_id_token>` header. The Fa
 6. MCP Server → `drive_append_record()` → Google Drive writes updated `grocery_list.json`
 7. Grocery Agent returns confirmation → Orchestrator formats response → Chat Interface
 
-### 5.2 Getting the Weekly Digest
+### 6.2 Getting the Weekly Digest
 
 1. User: "What's our week looking like?"
 2. Orchestrator identifies multi-agent digest intent
@@ -534,7 +534,7 @@ All endpoints require a `Authorization: Bearer <google_id_token>` header. The Fa
 5. Orchestrator receives both responses, synthesizes a cohesive weekly overview
 6. Optional: `grocery_agent` checks if shopping list has pending items worth mentioning
 
-### 5.3 Conflict Detection
+### 6.3 Conflict Detection
 
 1. User: "Add Emma's piano recital Sunday 2pm"
 2. Events Agent calls `check_conflicts('2026-06-21', 120)`
