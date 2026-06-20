@@ -1,0 +1,56 @@
+# Credentials & Secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+credentials/
+client_secret.json
+token.json
+token.pickle
+service_account.json
+
+# Android secrets
+*.keystore
+*.jks
+google-services.json
+local.properties
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node / TypeScript
+node_modules/
+dist/
+*.js.map
+.npm
+
+# Android build artifacts
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+*.apk
+*.aab
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs — may contain sensitive data
+*.log
+logs/
+mcp_server.log
