@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     google_refresh_token: str = ""
     drive_folder_id: str = ""
     google_sheet_id: str = ""          # Used when DATA_STORE=sheets
-    data_store: str = "sheets"         # "sheets" | "drive"
+    data_store: str = "sheets"         # "sheets" | "drive" | "mcp"
     family_name: str = "Our Family"
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

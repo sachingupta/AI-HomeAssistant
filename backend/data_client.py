@@ -3,8 +3,11 @@ Data client facade — selects the storage backend based on DATA_STORE env var.
 
   DATA_STORE=sheets  →  Google Sheets (default; visible in browser for testing)
   DATA_STORE=drive   →  Google Drive JSON files (production)
+  DATA_STORE=mcp     →  MCP server subprocess (JSON-RPC 2.0 over stdio)
+                         The MCP server itself uses DATA_STORE=drive.
+                         Use this to observe all storage calls in the MCP trace.
 
-All agents import from here — never directly from drive_client or sheets_client.
+All agents import from here — never directly from any backend module.
 Switching backends requires only a .env change, no code changes.
 """
 
@@ -19,9 +22,14 @@ def _load_backend():
     if store == "drive":
         logger.info("Data backend: Google Drive JSON files")
         from backend import drive_client as _backend
-    else:
-        logger.info("Data backend: Google Sheets (id=%s)", settings.google_sheet_id)
-        from backend import sheets_client as _backend
+        return _backend
+    if store == "mcp":
+        logger.info("Data backend: MCP server subprocess (real backend=drive)")
+        from backend.mcp_client import MCPClient
+        return MCPClient(server_data_store="drive")
+    # default: sheets
+    logger.info("Data backend: Google Sheets (id=%s)", settings.google_sheet_id)
+    from backend import sheets_client as _backend
     return _backend
 
 
