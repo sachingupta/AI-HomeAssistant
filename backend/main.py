@@ -17,24 +17,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from backend.config import settings
-from backend.agents.grocery.agent import GroceryAgent
-
-# TODO (Phase 3): replace GroceryAgent with OrchestratorAgent so all messages
-# are routed to the right sub-agent automatically:
-#   from backend.orchestrator.agent import OrchestratorAgent
-# main.py itself won't change beyond that one import swap.
+from backend.orchestrator.agent import OrchestratorAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Per-user agent instances (keyed by user_id)
-_agent_sessions: dict[str, GroceryAgent] = {}
-
-
-def _get_agent(user_id: str) -> GroceryAgent:
-    if user_id not in _agent_sessions:
-        _agent_sessions[user_id] = GroceryAgent(user=user_id)
-    return _agent_sessions[user_id]
+# Single orchestrator instance — it manages per-user sub-agent sessions internally
+_orchestrator = OrchestratorAgent()
 
 
 @asynccontextmanager
@@ -83,11 +72,10 @@ async def health():
 async def chat(request: ChatRequest):
     """Single-turn HTTP chat — suitable for simple request/response from Android."""
     try:
-        agent = _get_agent(request.user)
-        response_text = agent.chat(request.message)
+        response_text, agent_called = _orchestrator.chat(request.message, user_id=request.user)
         return ChatResponse(
             response=response_text,
-            agent_called="grocery_agent",  # Phase 3: orchestrator will return the actual agent name
+            agent_called=agent_called,
             session_id=request.session_id,
         )
     except Exception as exc:
@@ -114,7 +102,6 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
     """
     await websocket.accept()
     logger.info("WebSocket connected: %s", user_id)
-    agent = _get_agent(user_id)
 
     try:
         while True:
@@ -134,11 +121,11 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                 if not user_message:
                     continue
                 try:
-                    response_text = agent.chat(user_message)
+                    response_text, agent_called = _orchestrator.chat(user_message, user_id=user_id)
                     await websocket.send_text(json.dumps({
                         "type": "response",
                         "message": response_text,
-                        "agent_called": "grocery_agent",  # Phase 3: orchestrator will return the actual agent name
+                        "agent_called": agent_called,
                     }))
                 except Exception as exc:
                     logger.exception("Agent error for %s", user_id)
@@ -147,7 +134,7 @@ async def websocket_chat(websocket: WebSocket, user_id: str):
                     )
 
             elif msg_type == "reset":
-                agent.reset()
+                _orchestrator.reset(user_id=user_id)
                 await websocket.send_text(
                     json.dumps({"type": "response", "message": "Session cleared."})
                 )
