@@ -21,19 +21,93 @@ The system consists of five layers:
 - **Data Layer** — Custom MCP Server exposing Google Drive as structured tool calls
 
 ```
-Android App (Kotlin)
-      │  HTTPS/WebSocket (local home network)
-      ▼
-FastAPI Backend
-      │
-      ▼
-Orchestrator Agent (Claude)
-      │  delegates via message-passing
-      ├──► Grocery Agent  ──► MCP Server ──► Google Drive /groceries/
-      ├──► Events Agent   ──► MCP Server ──► Google Drive /events/
-      ├──► Todos Agent    ──► MCP Server ──► Google Drive /todos/
-      └──► Code Assistant Agent ──► local filesystem / docs
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     Android App  (Kotlin / Jetpack Compose)                  │
+│                  WhatsApp-style chat UI  •  offline Room cache               │
+└────────────────────────────┬────────────────────────────────────────────────┘
+                             │ HTTPS / WebSocket  (home Wi-Fi)
+                             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      FastAPI Backend  (main.py)                              │
+│                POST /chat  •  WS /ws/{user_id}  •  GET /health              │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │          OrchestratorAgent  (orchestrator/agent.py)                   │  │
+│  │                                                                       │  │
+│  │  ┌─────────────────┐      ┌──────────────────────────────────────┐   │  │
+│  │  │  router.py      │      │  ConversationMemory  (memory.py)     │   │  │
+│  │  │  keyword score  │      │  per-user rolling turn window        │   │  │
+│  │  │  → Intent enum  │      └──────────────────────────────────────┘   │  │
+│  │  └────────┬────────┘                                                  │  │
+│  │           │ fast-path route (no extra Claude call)                    │  │
+│  │     ┌─────┴──────┬───────────────┐                                   │  │
+│  │     ▼            ▼               ▼                                    │  │
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐    digest → fan-out all 3   │  │
+│  │  │ Grocery  │ │  Events  │ │  Todos   │    general → Claude direct   │  │
+│  │  │  Agent   │ │  Agent   │ │  Agent   │                               │  │
+│  │  │ ReAct    │ │  ReAct   │ │  ReAct   │  ← Claude claude-sonnet-4-6  │  │
+│  │  │  loop    │ │   loop   │ │   loop   │    with domain tool schemas  │  │
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘                             │  │
+│  └───────┼────────────┼────────────┼───────────────────────────────────┘  │
+│          │ Python function calls    │                                        │
+│          └────────────┬────────────┘                                        │
+│                       ▼                                                      │
+│         ┌─────────────────────────────┐                                     │
+│         │   data_client.py  (facade)  │  DATA_STORE env var selects backend │
+│         └──────────┬──────────────────┘                                     │
+└──────────────────  │  ──────────────────────────────────────────────────────┘
+                     │
+        ┌────────────┼────────────────────┐
+        │ =mcp       │ =drive             │ =sheets
+        ▼            ▼                    ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
+│ mcp_client   │  │ drive_client │  │ sheets_client    │
+│ .py          │  │ .py          │  │ .py              │
+│              │  │              │  │                  │
+│ spawns MCP   │  │ Google Drive │  │ Google Sheets    │
+│ server as    │  │ API directly │  │ API directly     │
+│ subprocess   │  └──────┬───────┘  └────────┬─────────┘
+│ stdin/stdout │         │                   │
+└──────┬───────┘         │                   │
+       │ JSON-RPC 2.0    │                   │
+       ▼                 │                   │
+┌──────────────────┐     │                   │
+│ MCP Server       │     │                   │
+│ (mcp_server/     │     │                   │
+│  server.py)      │     │                   │
+│                  │     │                   │
+│ tools/list       │     │                   │
+│ tools/call       │     │                   │
+│   store_read_json│     │                   │
+│   store_write_   │     │                   │
+│   store_append_  │     │                   │
+│   store_update_  │     │                   │
+│   store_delete_  │     │                   │
+└──────┬───────────┘     │                   │
+       │ DATA_STORE=drive │                   │
+       └─────────────────┘                   │
+                  │                           │
+                  ▼                           ▼
+     ┌─────────────────────┐   ┌──────────────────────────┐
+     │   Google Drive      │   │   Google Sheets          │
+     │                     │   │                          │
+     │  /events/           │   │  tab: events             │
+     │    events.json      │   │  tab: groceries          │
+     │  /groceries/        │   │  tab: todos              │
+     │    grocery_list.json│   │  (one row = one record)  │
+     │  /todos/            │   └──────────────────────────┘
+     │    todos.json       │
+     │  /agent-memory/     │
+     │    family_profile   │
+     └─────────────────────┘
 ```
+
+**DATA_STORE options:**
+| Value | Path | When to use |
+|-------|------|-------------|
+| `sheets` | FastAPI → data_client → sheets_client → Google Sheets | Default; inspect data in browser during dev |
+| `drive` | FastAPI → data_client → drive_client → Google Drive | Production; JSON files in Drive folder |
+| `mcp` | FastAPI → data_client → MCPClient → MCP Server subprocess → drive_client → Google Drive | Full MCP pipeline; every storage call goes through the protocol layer |
 
 ### 1.2 Technology Stack
 
