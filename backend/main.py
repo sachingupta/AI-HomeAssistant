@@ -1,9 +1,10 @@
 """
 FastAPI backend — bridges the Android app to the agent system.
 Endpoints:
-  POST /chat          — single-turn HTTP request/response
+  POST /chat          — single-turn HTTP request/response (family)
   WS   /ws/{user_id} — persistent WebSocket for streaming + proactive alerts
   GET  /health        — liveness check
+  POST /dev/chat      — developer-only endpoint routed to CodeAssistantAgent
 """
 
 import json
@@ -18,12 +19,15 @@ from pydantic import BaseModel
 
 from backend.config import settings
 from backend.orchestrator.agent import OrchestratorAgent
+from backend.agents.code_assistant.agent import CodeAssistantAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Single orchestrator instance — it manages per-user sub-agent sessions internally
+# Single orchestrator instance — manages per-user sub-agent sessions internally
 _orchestrator = OrchestratorAgent()
+# Single code assistant instance — developer tooling, not per-user
+_code_assistant = CodeAssistantAgent()
 
 
 @asynccontextmanager
@@ -80,6 +84,23 @@ async def chat(request: ChatRequest):
         )
     except Exception as exc:
         logger.exception("Chat error for user %s", request.user)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/dev/chat", response_model=ChatResponse)
+async def dev_chat(request: ChatRequest):
+    """Developer-only endpoint — routes directly to CodeAssistantAgent.
+    Use this to ask questions about the codebase, generate new tools, or read logs.
+    """
+    try:
+        response_text = _code_assistant.chat(request.message)
+        return ChatResponse(
+            response=response_text,
+            agent_called="code_assistant",
+            session_id=request.session_id,
+        )
+    except Exception as exc:
+        logger.exception("Code assistant error")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
